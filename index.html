@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="zh-CN">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow"><title>粉白粒子圣诞树</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#09060d;color:#fff3f9}button{font:inherit;min-height:44px;padding:0 14px;border:1px solid #af7897;border-radius:4px;background:#211021;color:#fff3f9;cursor:pointer}button:hover{background:#462039}button:focus-visible{outline:2px solid white;outline-offset:3px}
+</style>
+<main id="pink-christmas">
+<style>
+#pink-christmas .scene{position:relative;overflow:hidden;background:#09060d;height:100svh;min-height:320px;color:#fff3f9}
+#pink-christmas canvas{display:block;width:100%;height:100%}
+#pink-christmas .greeting{position:absolute;right:3%;bottom:5%;text-align:right;text-shadow:0 0 18px #ff8bc0;pointer-events:none}
+#pink-christmas .greeting strong{font:italic clamp(25px,4vw,68px) "Edwardian Script ITC","Segoe Script",Georgia,serif;font-weight:400}
+#pink-christmas .greeting small{display:block;font:11px system-ui;letter-spacing:.42em;margin-top:4px}
+#pink-christmas .actions{position:absolute;bottom:4%;left:3%;display:flex;gap:8px}
+@media(max-width:650px){#pink-christmas .greeting{bottom:15%;right:5%}#pink-christmas .actions{left:5%}}
+</style>
+<div class="scene">
+<canvas role="img" aria-label="深色星空中的粉白色圣诞树，带有发光爱心、漂浮装饰和环绕光带，背景闪现郑秀郡字样"></canvas>
+<div class="greeting"><strong>Merry Christmas</strong><small>圣诞快乐 · 2026</small></div>
+<div class="actions"><button class="btn" type="button" data-toggle>暂停</button><button class="btn" type="button" data-replay>重播</button></div>
+</div>
+<script>
+(() => {
+  const root = document.getElementById('pink-christmas');
+  const canvas = root.querySelector('canvas');
+  const ctx = canvas.getContext('2d');
+  const toggle = root.querySelector('[data-toggle]');
+  const replay = root.querySelector('[data-replay]');
+  const greeting = root.querySelector('.greeting');
+  const tau = Math.PI * 2;
+  const motion = matchMedia('(prefers-reduced-motion: reduce)');
+  let seed = 2026;
+  function random() {
+    seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+    return seed / 4294967296;
+  }
+
+  // Each branch has a curved spine and fine sprays clustered around it.
+  const needles = [];
+  const ornaments = [];
+  const bulbs = [];
+  for (let layer = 0; layer < 20; layer++) {
+    const height = .085 + layer * .043;
+    const count = 5 + Math.floor(layer / 2);
+    for (let branch = 0; branch < count; branch++) {
+      const angle = (branch / count + layer * .382) * tau;
+      const radius = (.04 + height * .51) * (.78 + random() * .32);
+      const bend = (random() - .5) * .7;
+      const droop = .025 + height * .085;
+      function point(u, spread, vertical) {
+        const direction = angle + bend * u;
+        return [
+          Math.cos(direction) * radius * u - Math.sin(direction) * spread,
+          height + droop * (u * u - u * .7) + vertical,
+          Math.sin(direction) * radius * u + Math.cos(direction) * spread
+        ];
+      }
+      for (let n = 0; n < 138; n++) {
+        const spray = (n % 23) / 23;
+        const fan = Math.sin((n / 23 | 0) * 1.9 + spray * 10);
+        const width = (.009 + height * .028) * Math.sin(Math.PI * spray);
+        const spread = (fan * .7 + random() - .5) * width;
+        needles.push([...point(spray + random() * .065, spread, (random() - .42) * width),
+          random(), random()]);
+      }
+      if (random() < .32) ornaments.push([...point(.81 + random() * .17, 0, .019), random(), random()]);
+      if (random() < .65) bulbs.push([...point(.55 + random() * .43, 0, -.003), random()]);
+    }
+  }
+  const dust = Array.from({length: 380}, () => [random(), random(), random(), random()]);
+  const burst = Array.from({length: 170}, () => [random() * tau, random(), random()]);
+  const codeBlocks = Array.from({length: 37}, (_, index) => ({
+    x: random(), y: (index % 19 + random()) / 19,
+    phase: random(), group: index % 3,
+    rows: Array.from({length: 1 + Math.floor(random() * 4)}, () =>
+      '郑秀郡'.repeat(1 + Math.floor(random() * 4)))
+  }));
+  const floaters = Array.from({length: 18}, (_, index) => ({
+    side: index % 2, shape: Math.floor(index / 2) % 4,
+    height: (Math.floor(index / 2) + random()) / 9, phase: random() * tau,
+    spread: random(), size: random()
+  }));
+
+  // Cache unit shapes so the same outlines work at every size.
+  const ball = new Path2D();
+  ball.arc(0, 0, 1, 0, tau);
+  const heart = new Path2D(
+    'M 0 .94 C -.32 .66 -1 .19 -1 -.34 C -1 -.99 -.28 -1.13 0 -.56 C .28 -1.13 1 -.99 1 -.34 C 1 .19 .32 .66 0 .94 Z'
+  );
+  const snowflake = new Path2D();
+  for (let arm = 0; arm < 6; arm++) {
+    const angle = arm * tau / 6;
+    const x = Math.cos(angle);
+    const y = Math.sin(angle);
+    snowflake.moveTo(0, 0);
+    snowflake.lineTo(x, y);
+    for (const side of [-1, 1]) {
+      snowflake.moveTo(x * .69, y * .69);
+      snowflake.lineTo(x * .44 - y * side * .23, y * .44 + x * side * .23);
+    }
+  }
+  const diamond = new Path2D('M 0 -1 L .68 0 L 0 1 L -.68 0 Z');
+  const shapes = [ball, heart, snowflake, diamond];
+  const heartRays = [[-.94, 2.8], [-1.35, 2.1], [-2.48, 2.4],
+    [-2.05, 1.6], [.62, 2.2], [1.16, 1.7], [2.53, 2]];
+  const heartFragments = [];
+  for (let row = -6; row <= 6; row++) {
+    for (let column = -6; column <= 6; column++) {
+      const x = (column + (random() - .5) * .65) * .158;
+      const y = (row + (random() - .5) * .65) * .158;
+      if (ctx.isPointInPath(heart, x, y)) {
+        heartFragments.push({
+          x, y, delay: random(), phase: random() * tau, weight: random(),
+          angle: random() * tau
+        });
+      }
+    }
+  }
+
+  function drawCode(t, narrow) {
+    const fontSize = narrow ? 9 : Math.max(10, Math.min(14, width * .01));
+    ctx.font = fontSize + 'px Consolas, "Microsoft YaHei", monospace';
+    ctx.textBaseline = 'middle';
+    for (const block of codeBlocks) {
+      const cycle = t * (.16 + block.phase * .1) + block.phase;
+      const flash = Math.sin(Math.PI * (cycle % 1)) ** 8;
+      const jump = Math.floor(cycle) % 3 - 1;
+      const drift = Math.sin(t * .31 + block.phase * tau) * width * .013;
+      const x = width * ([.025, .34, .75][block.group] + block.x * (block.group === 2 ? .15 : .24))
+        + drift + jump * fontSize * .7;
+      const y = height * (.025 + block.y * .87) + Math.sin(t * .43 + block.phase * tau) * fontSize;
+      ctx.textAlign = block.group === 2 ? 'right' : 'left';
+      ctx.fillStyle = block.group === 0 ? '#f8b6d8' : '#fff0fa';
+      for (const [row, line] of block.rows.entries()) {
+        ctx.globalAlpha = (.05 + flash * (block.group === 1 ? .10 : .27)) * (1 - row * .15);
+        ctx.fillText(line, x + row * fontSize * .65, y + row * fontSize * 1.15);
+      }
+    }
+    ctx.textAlign = 'start';
+  }
+
+  function drawOrnament(x, y, radius, shape, pale, alpha, angle, lit) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.scale(radius, radius);
+    ctx.globalAlpha = alpha;
+    ctx.lineJoin = 'round';
+    if (shape === 2) {
+      ctx.strokeStyle = pale ? '#fff6fd' : '#ff9acb';
+      ctx.lineWidth = .15;
+      ctx.stroke(snowflake);
+    } else {
+      const surface = ctx.createRadialGradient(-.35, -.43, .05, 0, 0, 1);
+      surface.addColorStop(0, '#fffaff');
+      surface.addColorStop(.38, pale ? '#fff0f9' : '#ffa9d4');
+      surface.addColorStop(1, lit ? (pale ? '#775669' : '#8d275d') : '#be6d9f');
+      ctx.fillStyle = surface;
+      ctx.fill(shapes[shape]);
+    }
+    ctx.restore();
+  }
+
+  function glowSprite(rgb) {
+    const sprite = document.createElement('canvas');
+    sprite.width = sprite.height = 96;
+    const pen = sprite.getContext('2d');
+    const gradient = pen.createRadialGradient(48,48,0,48,48,48);
+    gradient.addColorStop(0, 'white');
+    gradient.addColorStop(.09, 'rgba(' + rgb + ',.95)');
+    gradient.addColorStop(.27, 'rgba(' + rgb + ',.38)');
+    gradient.addColorStop(1, 'rgba(' + rgb + ',0)');
+    pen.fillStyle = gradient;
+    pen.fillRect(0,0,96,96);
+    return sprite;
+  }
+  const pinkGlow = glowSprite('255,112,185');
+  const whiteGlow = glowSprite('255,221,244');
+  const needlesColors = ['#8e486c','#c07b9d','#eab5d0','#fff0fa'];
+
+  let width, height, pixelRatio;
+  let elapsed = motion.matches ? 10 : 0;
+  let playing = !motion.matches;
+  let previous = null;
+  let frame = 0;
+  const smooth = value => {
+    const t = Math.max(0,Math.min(1,value));
+    return t * t * (3 - 2 * t);
+  };
+  function paint(t) {
+    const narrow = width < 650;
+    const pullback = smooth(t / 7);
+    const lightOn = smooth((t - 3) / 4.8);
+    const size = Math.min(height * (narrow ? .68 : .81), width * (narrow ? .86 : .55));
+    const scale = size * (2.76 - 1.76 * pullback);
+    const center = width * (narrow ? .5 : .56);
+    const top = (height - size) * (narrow ? .32 : .5) - size * (1 - pullback) * 1.05;
+    const rotation = .45 + t * .28;
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+    function project(x,y,z) {
+      const depth = z * cos - x * sin;
+      const perspective = 1 / (1 - depth * .28);
+      return [center + (x * cos + z * sin) * scale * perspective,
+        top + (.46 + (y - .46 + depth * .14) * perspective) * scale, perspective];
+    }
+    function glow(sprite,x,y,radius,alpha) {
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(sprite,x-radius,y-radius,radius*2,radius*2);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#09060e';
+    ctx.fillRect(0,0,width,height);
+    const haze = ctx.createRadialGradient(center, height*.56,0,center,height*.53,height*.62);
+    haze.addColorStop(0,'#281022');
+    haze.addColorStop(1,'#09060e');
+    ctx.fillStyle = haze;
+    ctx.fillRect(0,0,width,height);
+    ctx.fillStyle = '#ffd9f2';
+    for (const [x,y,a,b] of dust) {
+      ctx.globalAlpha = a * (.13 + .2 * Math.sin(t*.55+b*32)**2);
+      const dot = .45 + b * 1.35;
+      ctx.fillRect(x*width, ((y+t*.006)%1)*height,dot,dot);
+    }
+    drawCode(t, narrow);
+    for (const item of floaters) {
+      const x = width * (item.side ? .79 + item.spread * .15 : .06 + item.spread * .16)
+        + Math.sin(t * .59 + item.phase) * width * .022;
+      const y = height * (.16 + item.height * (narrow ? .49 : .53))
+        + Math.cos(t * .51 + item.phase) * size * .03;
+      const radius = Math.max(2.5, size * (.009 + item.size * .012));
+      const alpha = .42 + .28 * Math.sin(t * .65 + item.phase) ** 2;
+      glow(pinkGlow, x, y, radius * 2.3, alpha * .35);
+      drawOrnament(x, y, radius, item.shape, item.side === 0, alpha,
+        Math.sin(t * .71 + item.phase) * .65, false);
+    }
+
+    const [trunkX,trunkY] = project(0,.83,0);
+    const trunk = ctx.createLinearGradient(trunkX-size*.021,0,trunkX+size*.021,0);
+    trunk.addColorStop(0,'#140b16');
+    trunk.addColorStop(.58,'#5b354b');
+    trunk.addColorStop(1,'#1c101e');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = trunk;
+    ctx.fillRect(trunkX-size*.021,trunkY,size*.042,scale*.15);
+
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [x,y,z,a,b] of needles) {
+      const [px,py,p] = project(x,y,z);
+      if (px < -5 || px > width + 5 || py < -5 || py > height + 5) continue;
+      const dot = Math.max(.48,size*.00155) * p * (.52 + b);
+      ctx.fillStyle = needlesColors[Math.floor(a*4)];
+      ctx.globalAlpha = (.14 + .61*b) * (p > 1 ? 1 : .63);
+      ctx.fillRect(px,py,dot*(1.2+b*.8),dot*.72);
+    }
+
+    for (const [x,y,z,phase] of bulbs) {
+      const [px,py,p] = project(x,y,z);
+      const flash = (.43 + .57*Math.sin(t*1.9+phase*45)**4) * (.4 + .6*lightOn);
+      glow(phase > .42 ? whiteGlow : pinkGlow,px,py, size*.038*p,flash);
+    }
+
+    const decorations = ornaments.map(([x,y,z,a,b], index) =>
+      [...project(x,y,z),a,b,index % shapes.length]);
+    decorations.sort((a,b) => a[2] - b[2]);
+    ctx.globalCompositeOperation = 'source-over';
+    for (const [x,y,p,a,b,shape] of decorations) {
+      const radius = Math.max(1.3,scale*(.011+.013*b)*p);
+      if (x < -radius || x > width+radius || y < -radius || y > height+radius) continue;
+      drawOrnament(x, y, radius, shape, a > .57, p < 1 ? .66 : .97,
+        Math.sin(t * .82 + a * tau) * .43, true);
+    }
+
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i <= 830 * lightOn; i++) {
+      const u = i / 830;
+      const angle = u*tau*4.25 - t*.78;
+      const radius = .06 + .47*u;
+      const [x,y,p] = project(Math.cos(angle)*radius,.107+.8*u,Math.sin(angle)*radius);
+      const highlight = .37 + .63*Math.sin(angle*.58+t*1.7)**8;
+      glow(i%3 ? pinkGlow : whiteGlow,x,y,size*.021*p, (.08+.28*highlight)*lightOn);
+      ctx.globalAlpha = (.1+.52*highlight)*lightOn;
+      ctx.fillStyle = '#fff1fa';
+      const dot = size*.0048*p;
+      ctx.fillRect(x-dot/2,y-dot/2,dot,dot);
+    }
+
+    const [heartX,heartY] = project(0,.021,0);
+    const shine = smooth((t - 3.3) / 3.6) * (.88 + .12 * Math.sin(t * 2.4));
+    const heartSize = size * .045;
+    glow(pinkGlow, heartX, heartY, size * .23, shine * .40);
+    ctx.save();
+    ctx.translate(heartX, heartY);
+    ctx.save();
+    ctx.scale(7.5, .30);
+    glow(pinkGlow, 0, 0, size * .105, shine * .58);
+    ctx.restore();
+    ctx.scale(heartSize, heartSize);
+    for (const [angle, length] of heartRays) {
+      const dx = Math.cos(angle);
+      const dy = Math.sin(angle);
+      const ray = ctx.createLinearGradient(0, 0, dx * length, dy * length);
+      ray.addColorStop(0, '#fff5fb');
+      ray.addColorStop(1, '#ff9cce00');
+      ctx.strokeStyle = ray;
+      ctx.globalAlpha = shine * .79;
+      ctx.lineWidth = .032;
+      ctx.beginPath();
+      ctx.moveTo(dx * .5, dy * .5);
+      ctx.lineTo(dx * length, dy * length);
+      ctx.stroke();
+    }
+    for (const fragment of heartFragments) {
+      const settle = smooth((t - 3.5 - fragment.delay * 1.5) / 2.2);
+      if (settle === 0) continue;
+      const spread = (1 - settle) * 2.2;
+      const x = fragment.x + Math.cos(fragment.angle) * spread;
+      const y = fragment.y + Math.sin(fragment.angle) * spread;
+      const flicker = .63 + .37 * Math.sin(t * 2.6 + fragment.phase) ** 4;
+      const opacity = settle * flicker * (.76 + shine * .24);
+      const radius = .032 + fragment.weight * .041;
+      const white = fragment.weight > .52;
+      glow(white ? whiteGlow : pinkGlow, x, y, radius * 2.6, opacity * .65);
+      ctx.globalAlpha = opacity;
+      ctx.fillStyle = white ? '#fff8ff' : '#ff8bc3';
+      ctx.fillRect(x - radius * .72, y - radius * .52, radius * 1.44, radius * 1.04);
+    }
+    ctx.restore();
+
+    if (!narrow && t >= 9) {
+      for (const side of [0,1]) {
+        const phase = ((t-9+side*2.9)%6)/6;
+        const opacity = Math.sin(phase*Math.PI)**2;
+        for (const [angle,spread,brightness] of burst) {
+          const distance = size*.23*phase*(.45+.55*spread);
+          const x = width*(side ? .86 : .16) + Math.cos(angle+side)*distance;
+          const y = height*(side ? .33 : .23) + Math.sin(angle+side)*distance + size*.07*phase**2;
+          glow(whiteGlow,x,y,size*.013,opacity*brightness*.72);
+        }
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.globalCompositeOperation = 'source-over';
+    greeting.style.opacity = smooth((t-4)/4);
+  }
+
+  function resize() {
+    width = canvas.clientWidth;
+    height = canvas.clientHeight;
+    if (!width || !height) return;
+    pixelRatio = Math.min(devicePixelRatio, 1.75);
+    canvas.width = Math.round(width*pixelRatio);
+    canvas.height = Math.round(height*pixelRatio);
+    ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);
+    paint(elapsed);
+  }
+  function animate(now) {
+    if (previous !== null) elapsed += Math.min((now-previous)/1000,.1);
+    previous = now;
+    paint(elapsed);
+    frame = requestAnimationFrame(animate);
+  }
+  function setPlaying(active) {
+    cancelAnimationFrame(frame);
+    previous = null;
+    playing = active;
+    toggle.textContent = active ? '暂停' : '播放';
+    if (active) frame = requestAnimationFrame(animate);
+  }
+  toggle.onclick = () => setPlaying(!playing);
+  replay.onclick = () => {
+    elapsed = 0;
+    paint(elapsed);
+    setPlaying(true);
+  };
+  motion.addEventListener('change', event => {
+    if (event.matches) {
+      elapsed = 10;
+      paint(elapsed);
+      setPlaying(false);
+    }
+  });
+  new ResizeObserver(resize).observe(canvas);
+  resize();
+  setPlaying(playing);
+})();
+</script>
+</main>
