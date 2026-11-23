@@ -7,7 +7,7 @@
 <meta property="og:title" content="郡郡天天开心呀">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://yuk1oo.github.io/pink-tree-ceef8e854c/orbit.html">
-<meta property="og:image" content="https://yuk1oo.github.io/pink-tree-ceef8e854c/orbit-cover.jpg">
+<meta property="og:image" content="https://yuk1oo.github.io/pink-tree-ceef8e854c/orbit-cover-particles.jpg">
 <meta property="og:image:alt" content="银白圣诞树、轻松熊和白猫">
 <style>
 *{box-sizing:border-box}body{margin:0;background:#070a11;color:#fff3f9}button{font:inherit;min-height:44px;padding:0 14px;border:1px solid #af7897;border-radius:4px;background:#211021;color:#fff3f9;cursor:pointer}button:hover{background:#462039}button:focus-visible{outline:2px solid white;outline-offset:3px}
@@ -395,45 +395,45 @@
     }
     ctx.restore();
   }
-  function ellipse(x, y, rx, ry, color, angle = 0) {
+  function ellipse(ctx, x, y, rx, ry, color, angle = 0) {
     ctx.beginPath();
     ctx.ellipse(x, y, rx, ry, angle, 0, tau);
     ctx.fillStyle = color;
     ctx.fill();
   }
 
-  function softFur(light, shadow) {
+  function softFur(ctx, light, shadow) {
     const fur = ctx.createLinearGradient(-34, -99, 32, -7);
     fur.addColorStop(0, light);
     fur.addColorStop(1, shadow);
     return fur;
   }
 
-  function drawBear(t) {
-    const fur = softFur('#d29a68', '#895537');
+  function drawBear(t, ctx) {
+    const fur = softFur(ctx, '#d29a68', '#895537');
     const edge = '#6d4739';
-    ellipse(0, -2, 41, 5, '#0b0d17a0');
-    ellipse(-21, -14, 14, 12, edge, .3);
-    ellipse(21, -14, 14, 12, edge, -.3);
-    ellipse(0, -27, 30, 27, fur);
-    ellipse(1, -23, 17, 15, '#dfb78f');
-    ellipse(-24, -28, 8, 15, fur, .58);
-    ellipse(24, -28, 8, 15, fur, -.58);
-    ellipse(-19, -8, 12, 7, fur, -.16);
-    ellipse(19, -8, 12, 7, fur, .16);
+    ellipse(ctx, 0, -2, 41, 5, '#0b0d17a0');
+    ellipse(ctx, -21, -14, 14, 12, edge, .3);
+    ellipse(ctx, 21, -14, 14, 12, edge, -.3);
+    ellipse(ctx, 0, -27, 30, 27, fur);
+    ellipse(ctx, 1, -23, 17, 15, '#dfb78f');
+    ellipse(ctx, -24, -28, 8, 15, fur, .58);
+    ellipse(ctx, 24, -28, 8, 15, fur, -.58);
+    ellipse(ctx, -19, -8, 12, 7, fur, -.16);
+    ellipse(ctx, 19, -8, 12, 7, fur, .16);
 
     for (const side of [-1, 1]) {
-      ellipse(side * 29, -88, 13, 13, edge);
-      ellipse(side * 29, -89, 11.8, 11.8, fur);
-      ellipse(side * 29, -89, 6.8, 6.8, '#f2db9e');
+      ellipse(ctx, side * 29, -88, 13, 13, edge);
+      ellipse(ctx, side * 29, -89, 11.8, 11.8, fur);
+      ellipse(ctx, side * 29, -89, 6.8, 6.8, '#f2db9e');
     }
-    ellipse(0, -66, 37, 29, fur);
-    ellipse(0, -56, 14.5, 11, '#fff0d8');
-    ellipse(0, -59, 3.8, 2.9, '#302423');
+    ellipse(ctx, 0, -66, 37, 29, fur);
+    ellipse(ctx, 0, -56, 14.5, 11, '#fff0d8');
+    ellipse(ctx, 0, -59, 3.8, 2.9, '#302423');
     const blink = Math.exp(-(((((t + 1.1) % 5.4) - 2.7) / .105) ** 2));
     for (const side of [-1, 1]) {
-      ellipse(side * 17, -67, 2.8, 3.3 - blink * 2.65, '#302423');
-      ellipse(side * 24, -58, 4.2, 2, '#e9a4a082');
+      ellipse(ctx, side * 17, -67, 2.8, 3.3 - blink * 2.65, '#302423');
+      ellipse(ctx, side * 24, -58, 4.2, 2, '#e9a4a082');
     }
     ctx.beginPath();
     ctx.moveTo(0, -57);
@@ -447,10 +447,10 @@
     ctx.stroke();
   }
 
-  function drawCat(t) {
-    const fur = softFur('#fffaf4', '#b9c4d5');
+  function drawCat(t, ctx) {
+    const fur = softFur(ctx, '#fffaf4', '#b9c4d5');
     const tail = Math.sin(t * 1.8) * 7;
-    ellipse(2, -2, 42, 5, '#0b0d17a0');
+    ellipse(ctx, 2, -2, 42, 5, '#0b0d17a0');
     ctx.lineCap = 'round';
     ctx.beginPath();
     ctx.moveTo(18, -12);
@@ -458,9 +458,9 @@
     ctx.strokeStyle = '#dce4ee';
     ctx.lineWidth = 8;
     ctx.stroke();
-    ellipse(0, -24, 25, 24, fur);
-    ellipse(-11, -7, 10, 6, '#f3f1f4');
-    ellipse(12, -7, 10, 6, '#f3f1f4');
+    ellipse(ctx, 0, -24, 25, 24, fur);
+    ellipse(ctx, -11, -7, 10, 6, '#f3f1f4');
+    ellipse(ctx, 12, -7, 10, 6, '#f3f1f4');
     for (const side of [-1, 1]) {
       ctx.save();
       ctx.scale(side, 1);
@@ -480,10 +480,10 @@
       ctx.fill();
       ctx.restore();
     }
-    ellipse(0, -59, 31, 23, fur);
+    ellipse(ctx, 0, -59, 31, 23, fur);
     for (const side of [-1, 1]) {
-      ellipse(side * 12, -60, 2, 3.5, '#394551', -.15 * side);
-      ellipse(side * 18, -53, 5, 2.4, '#efa9bc65');
+      ellipse(ctx, side * 12, -60, 2, 3.5, '#394551', -.15 * side);
+      ellipse(ctx, side * 18, -53, 5, 2.4, '#efa9bc65');
       ctx.beginPath();
       ctx.moveTo(side * 18, -52);
       ctx.lineTo(side * 31, -56);
@@ -493,7 +493,7 @@
       ctx.lineWidth = .85;
       ctx.stroke();
     }
-    ellipse(0, -55, 2.8, 2, '#b98194');
+    ellipse(ctx, 0, -55, 2.8, 2, '#b98194');
     ctx.beginPath();
     ctx.moveTo(-4.5, -51);
     ctx.quadraticCurveTo(-2.5, -48.5, 0, -52);
@@ -503,19 +503,77 @@
     ctx.stroke();
   }
 
+  // Sample the silhouettes into spaced points. Only the points reach the scene.
+  function sampleCompanion(draw, times, warm) {
+    const mask = document.createElement('canvas');
+    mask.width = 122;
+    mask.height = 108;
+    const pen = mask.getContext('2d', {willReadFrequently: true});
+    return times.map(time => {
+      pen.setTransform(1, 0, 0, 1, 55, 105);
+      pen.clearRect(-55, -105, mask.width, mask.height);
+      draw(time, pen);
+      const data = pen.getImageData(0, 0, mask.width, mask.height).data;
+      const points = [];
+      for (let row = 1; row < mask.height - 3; row += 3) {
+        for (let column = 1; column < mask.width - 1; column += 3) {
+          const index = (row * mask.width + column) * 4;
+          if (data[index + 3] < 170) continue;
+          const chroma = data[index] - data[index + 2];
+          const light = (data[index] + data[index + 1] + data[index + 2]) / 765;
+          const noise = Math.sin(row * 9.21 + column * 3.89);
+          const color = light < .34 ? '#738398' : warm && chroma > 26 ?
+            (light > .73 ? '#fff3d9' : '#edc197') : '#eef6ff';
+          points.push({
+            x: column - 55 + noise * .45, y: row - 105 + Math.cos(row + column * 7) * .45,
+            light, noise, color
+          });
+        }
+      }
+      return points;
+    });
+  }
+
+  const bearCloud = sampleCompanion(drawBear, [0, 1.60], true);
+  const catCloud = sampleCompanion(drawCat, Array.from({length: 15}, (_, i) =>
+    Math.asin((i - 7) / 7) / 1.8), false);
+
+  function paintCompanion(points, time, reveal) {
+    const scatter = (1 - reveal) * 17;
+    for (const point of points) {
+      const twinkle = .77 + .23 * Math.sin(time * 1.65 + point.noise * 22) ** 2;
+      const x = point.x + Math.cos(point.y + point.noise * 7) * scatter;
+      const y = point.y + point.noise * scatter;
+      const dot = .67 + point.light * .62;
+      ctx.fillStyle = point.color;
+      ctx.globalAlpha = reveal * twinkle * (.28 + .68 * point.light);
+      ctx.beginPath();
+      ctx.arc(x, y, dot * .83, 0, tau);
+      ctx.fill();
+      if (point.noise > .94 && point.light > .6) {
+        ctx.globalAlpha *= .16;
+        ctx.beginPath();
+        ctx.arc(x, y, dot * 1.65, 0, tau);
+        ctx.fill();
+      }
+    }
+  }
+
   function drawCompanions(t, narrow, size, top, orbit) {
     const reveal = smooth((orbit - .66) / .33);
     if (reveal === 0) return;
-    const unit = narrow ? Math.min(width * .00146, size * .0029) : Math.min(.97, size * .00185);
+    const unit = narrow ? Math.min(width * .00152, size * .0030) : Math.min(1.02, size * .00194);
     const floor = narrow ? top + size * .97 : Math.min(top + size * .92, height * .79);
+    const blink = Math.abs(((t + 1.1) % 5.4) - 2.7) < .12 ? 1 : 0;
+    const tail = Math.round(7 + Math.sin(t * 1.8) * 7);
     ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = reveal * .95;
-    for (const [position, draw] of [[narrow ? .125 : .29, drawBear], [narrow ? .867 : .869, drawCat]]) {
+    ctx.globalCompositeOperation = 'lighter';
+    for (const [position, points] of [[narrow ? .125 : .29, bearCloud[blink]],
+      [narrow ? .867 : .869, catCloud[tail]]]) {
       ctx.save();
       ctx.translate(width * position, floor);
       ctx.scale(unit, unit);
-      draw(t);
+      paintCompanion(points, t, reveal);
       ctx.restore();
     }
     ctx.restore();
