@@ -624,7 +624,25 @@
       widths: centerline.map((_, i) => strokeThickness(weight, i / last))};
   });
 
-  const particles = needles.filter((_, index) => index % 3 === 0).map(needle => {
+  const messageMask = document.createElement('canvas');
+  messageMask.width = 480;
+  messageMask.height = 132;
+  const messagePen = messageMask.getContext('2d', {willReadFrequently: true});
+  messagePen.font = '500 100px "Microsoft YaHei", "PingFang SC", sans-serif';
+  messagePen.textAlign = 'center';
+  messagePen.textBaseline = 'middle';
+  messagePen.fillText('我喜欢你', 240, 66);
+  const messagePixels = messagePen.getImageData(0, 0, 480, 132).data;
+  const messagePoints = [];
+  for (let y = 1; y < 132; y += 2) {
+    for (let x = 1; x < 480; x += 2) {
+      if (messagePixels[(y * 480 + x) * 4 + 3] > 150) {
+        messagePoints.push([(x - 240) / 480, (y - 66) / 480]);
+      }
+    }
+  }
+  const particles = needles.filter((_, index) => index % 3 === 0).map((needle, index) => {
+    const message = messagePoints[(index * 73) % messagePoints.length] ?? [0, 0];
     const p = random() * nameLength;
     const stroke = nameStrokes.find(stroke => p < stroke.offset + stroke.length);
     const name = {stroke, position: p - stroke.offset, side: random() - .5,
@@ -638,13 +656,15 @@
     } while (distance ** 3 - x * x * y ** 3 > 0);
     const bevel = Math.sqrt(Math.max(.045, Math.min(1, 1 - Math.hypot(x * .72, y * .69))));
     const heart = [x * .385, .49 - y * .38, depth * bevel * .25];
-    return {needle, name, heart, shimmer: random() * tau, glint: random() < .09};
+    return {needle, name, heart, message, shimmer: random() * tau, glint: random() < .09};
   });
 
   const particleTints = ["#e8edf9", "#f5e6f1", "#f1cee3", "#ffbadc", "#f8a8d3",
     "#fa91c9", "#fa7cba", "#ff68b3", "#ff57ab"];
   const transitionDuration = 1.6;
-  const forms = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
+  const forms = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
+  let playedSeconds = 0;
+  let messageShown = false;
   let mode = 0;
   let fromWeights = forms[0];
   let changedAt = 0;
@@ -864,7 +884,7 @@
 
   function paint(t) {
     const narrow = width < 650;
-    const [treeWeight, nameWeight, heartWeight] = weightsAt(t);
+    const [treeWeight, nameWeight, heartWeight, messageWeight] = weightsAt(t);
     const nameMotion = !motion.matches && nameWeight > 0;
     const sweepHead = (t * .31) % 1;
     const split = smooth((t - splitStart) / (orbitStart - splitStart));
@@ -884,6 +904,8 @@
     const cos = Math.cos(rotation);
     const sin = Math.sin(rotation);
     const nameUnit = Math.min(width * .00276, size * .00332) / size;
+    const messageScale = Math.min(width * .99, size * 1.05) / size;
+    const messageY = (height * .46 - top) / size;
     const nameTime = nameMotion ? t : 0;
     const nameRise = Math.sin(nameTime * 1.07) * .05;
     const nameSlide = Math.sin(nameTime * .71) * .028;
@@ -960,7 +982,7 @@
     ctx.globalCompositeOperation = 'lighter';
     const branchOffsets = treeWeight > 0 ?
       drawInkStrokes(t, size, top, project, split, tiers, treeWeight) : [];
-    for (const {needle, name, heart, shimmer, glint} of particles) {
+    for (const {needle, name, heart, message, shimmer, glint} of particles) {
       const [x,y,z,a,b,tier,spray] = needle;
       const start = .28 + spray * .16;
       const growth = tiers[tier];
@@ -1003,9 +1025,10 @@
       }
       const heartX = heart[0] * heartCos - heart[2] * heartSin;
       const heartZ = heart[0] * heartSin + heart[2] * heartCos;
-      let [px,py,p] = project(x * treeWeight + nameX * nameWeight + heartX * heartWeight,
-        y * treeWeight + nameYOnStroke * nameWeight + heart[1] * heartWeight,
-        z * treeWeight + nameZ * nameWeight + heartZ * heartWeight);
+      const messageX = message[0] * messageScale;
+      let [px,py,p] = project(x * treeWeight + nameX * nameWeight + heartX * heartWeight + messageX * cos * messageWeight,
+        y * treeWeight + nameYOnStroke * nameWeight + heart[1] * heartWeight + (messageY + message[1] * messageScale) * messageWeight,
+        z * treeWeight + nameZ * nameWeight + heartZ * heartWeight + messageX * sin * messageWeight);
       if (branchOffsets[tier]) {
         const [offsetX, offsetY] = branchOffsets[tier][Math.round(spray * 39)];
         px += offsetX * treeWeight;
@@ -1016,9 +1039,9 @@
       const dot = Math.max(.62, size * .0020) * p * (.55 + b) * (1 - .29 * nameWeight);
       const pink = Math.round(heartWeight * (glint ? .35 : .95) * 8
         + nameWeight * (a > .95 ? .25 : .03) * 8);
-      ctx.fillStyle = pink > 0 ? particleTints[pink] : nameWeight > .45 ? "#eaf3ff" : needlesColors[Math.floor(a * 4)];
+      ctx.fillStyle = messageWeight > .4 ? (glint ? "#ffb9dc" : "#fff1fa") : pink > 0 ? particleTints[pink] : nameWeight > .45 ? "#eaf3ff" : needlesColors[Math.floor(a * 4)];
       ctx.globalAlpha = twinkle * (treeWeight * foliage * (.24 + .65*b)
-        + nameWeight * taper * (.28 + .43*b + .25*lightFlow) + heartWeight * (.40 + .56*b))
+        + nameWeight * taper * (.28 + .43*b + .25*lightFlow) + heartWeight * (.40 + .56*b) + messageWeight * (.36 + .53*b))
         * (p > 1 ? 1 : .68);
       ctx.fillRect(px, py, dot * (1 + .4*treeWeight), dot * (.92 - .16*treeWeight));
       if (glint && nameWeight + heartWeight > .15) {
@@ -1144,7 +1167,15 @@
     paint(elapsed);
   }
   function animate(now) {
-    if (previous !== null) elapsed += Math.min((now-previous)/1000,.1);
+    if (previous !== null) {
+      const delta = Math.min((now-previous)/1000,.1);
+      elapsed += delta;
+      playedSeconds += delta;
+    }
+    if (!messageShown && playedSeconds + 1e-9 >= 52) {
+      messageShown = true;
+      selectMode(3);
+    }
     previous = now;
     paint(elapsed);
     if (elapsed >= morphEnd && modeButtons[0].disabled) updateModeButtons();
@@ -1166,6 +1197,8 @@
   toggle.onclick = () => setPlaying(!playing);
   replay.onclick = () => {
     elapsed = 0;
+    playedSeconds = 0;
+    messageShown = false;
     ornamentTap = -Infinity;
     changedAt = 0;
     mode = 0;
