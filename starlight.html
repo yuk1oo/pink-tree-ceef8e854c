@@ -53,7 +53,7 @@
   const canvas = root.querySelector('canvas');
   const ctx = canvas.getContext('2d');
   const AUTO_CONFESSION_DELAY = 131.4;
-  const CROWN_TAP_WINDOW_MS = 800;
+  const CROWN_MAX_TAP_GAP_MS = 800;
   const CROWN_TAPS_REQUIRED = 5;
   const dense = root.dataset.style === 'halo';
   const toggle = root.querySelector('[data-toggle]');
@@ -678,7 +678,7 @@
   let crownPoint = null;
   let crownPress = null;
   let crownTaps = 0;
-  let crownFirstTap = 0;
+  let crownLastTap = 0;
   let playedSeconds = 0;
   let messageShown = false;
   let heartFireworksAt = Infinity;
@@ -1213,7 +1213,7 @@
   function resetCrownTaps() {
     crownPress = null;
     crownTaps = 0;
-    crownFirstTap = 0;
+    crownLastTap = 0;
   }
 
   function revealConfession() {
@@ -1254,10 +1254,10 @@
       return;
     }
     crownPress = null;
-    if (crownTaps === 0 || event.timeStamp - crownFirstTap > CROWN_TAP_WINDOW_MS) {
-      crownFirstTap = event.timeStamp;
+    if (event.timeStamp - crownLastTap > CROWN_MAX_TAP_GAP_MS) {
       crownTaps = 0;
     }
+    crownLastTap = event.timeStamp;
     if (++crownTaps === CROWN_TAPS_REQUIRED) revealConfession();
   }, true);
   document.addEventListener('visibilitychange', () => {
