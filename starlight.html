@@ -640,21 +640,37 @@
     ['32,11 28,25 17,42 7,53','23,39 23,68 22,92','55,10 51,26 40,42','49,29 82,27 91,30 83,43',
      '64,34 64,77 61,91 49,82','46,53 40,67 32,77','77,53 89,66 95,75']
   ];
-  const messagePaths = messageInk.flatMap((glyph, index) => glyph.map(stroke => {
-    const points = stroke.split(' ').map(pair => pair.split(',').map(Number));
-    const length = points.slice(1).reduce((sum, point, i) =>
-      sum + Math.hypot(point[0] - points[i][0], point[1] - points[i][1]), 0);
-    return {line: resample(points, 40), length, offset: index * 105 - 208};
-  }));
-  const messageLength = messagePaths.reduce((sum, path) => sum + path.length, 0);
-  const particles = needles.filter((_, index) => index % 3 === 0).map((needle, index) => {
-    let distanceOnMessage = ((index * .61803398875) % 1) * messageLength;
-    const path = messagePaths.find(path => {
-      if (distanceOnMessage < path.length) return true;
-      distanceOnMessage -= path.length;
+  const junInk = lettering[2].map(([, path]) => path);
+  const tianInk = ['24,20 74,17', '14,44 89,41', '50,19 49,44 44,58 33,75 13,90',
+    '51,46 59,62 71,75 91,88'];
+  const wishInk = [junInk, junInk, tianInk, tianInk,
+    ['19,20 81,17','11,47 89,44','39,19 39,42 33,66 23,85','66,18 66,89'],
+    ['14,49 9,70','34,40 31,63 36,80 51,86 71,85 77,78 77,71','48,24 58,35 63,47','76,39 89,58 94,67'],
+    ['12,30 13,67','13,31 34,29 36,31 34,63','14,64 34,63','47,22 89,19','52,23 47,51 91,49',
+      '70,22 71,78 65,89 55,82','67,51 56,68 42,81']];
+  function makeMessagePaths(ink) {
+    const paths = ink.flatMap((glyph, index) => glyph.map(stroke => {
+      const points = stroke.split(' ').map(pair => pair.split(',').map(Number));
+      const length = points.slice(1).reduce((sum, point, i) =>
+        sum + Math.hypot(point[0] - points[i][0], point[1] - points[i][1]), 0);
+      return {line: resample(points, 40), length, offset: index * 105 - ink.length * 105 / 2};
+    }));
+    return {paths, length: paths.reduce((sum, path) => sum + path.length, 0)};
+  }
+  const messagePaths = makeMessagePaths(messageInk);
+  const wishPaths = makeMessagePaths(wishInk);
+  function messagePoint({paths, length}, index) {
+    let position = ((index * .61803398875) % 1) * length;
+    const path = paths.find(path => {
+      if (position < path.length) return true;
+      position -= path.length;
       return false;
     });
-    const message = {path, position: distanceOnMessage, spread: Math.sin(index * 8.31)};
+    return {path, position, spread: Math.sin(index * 8.31)};
+  }
+  const particles = needles.filter((_, index) => index % 3 === 0).map((needle, index) => {
+    const message = messagePoint(messagePaths, index);
+    const wish = messagePoint(wishPaths, index);
     const p = random() * nameLength;
     const stroke = nameStrokes.find(stroke => p < stroke.offset + stroke.length);
     const name = {stroke, position: p - stroke.offset, side: random() - .5,
@@ -668,13 +684,13 @@
     } while (distance ** 3 - x * x * y ** 3 > 0);
     const bevel = Math.sqrt(Math.max(.045, Math.min(1, 1 - Math.hypot(x * .72, y * .69))));
     const heart = [x * .385, .49 - y * .38, depth * bevel * .25];
-    return {needle, name, heart, message, shimmer: random() * tau, glint: random() < .09};
+    return {needle, name, heart, message, wish, shimmer: random() * tau, glint: random() < .09};
   });
 
   const particleTints = ["#e8edf9", "#f5e6f1", "#f1cee3", "#ffbadc", "#f8a8d3",
     "#fa91c9", "#fa7cba", "#ff68b3", "#ff57ab"];
   const transitionDuration = 1.6;
-  const forms = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
+  const forms = [[1, 0, 0, 0, 0], [0, 1, 0, 0, 0], [0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [0, 0, 0, 0, 1]];
   let crownPoint = null;
   let crownPress = null;
   let crownTaps = 0;
@@ -902,7 +918,8 @@
 
   function paint(t) {
     const narrow = width < 650;
-    const [treeWeight, nameWeight, heartWeight, messageWeight] = weightsAt(t);
+    const [treeWeight, nameWeight, heartWeight, confessionWeight, wishWeight] = weightsAt(t);
+    const messageWeight = confessionWeight + wishWeight;
     const nameMotion = !motion.matches && nameWeight > 0;
     const sweepHead = (t * .31) % 1;
     const split = smooth((t - splitStart) / (orbitStart - splitStart));
@@ -978,7 +995,7 @@
     }
     const backgroundWeight = treeWeight + messageWeight;
     drawCode(t, narrow, (.17 + backgroundWeight * .83) * smooth((orbit - .42) / .58));
-    const roundStrength = backgroundWeight * (messageShown ? smooth((heartFireworksAt - t) / .7) : 1);
+    const roundStrength = backgroundWeight * (Number.isFinite(heartFireworksAt) ? smooth((heartFireworksAt - t) / .7) : 1);
     if (roundStrength > .01) drawFireworks(t, narrow, (sprite, x, y, radius, alpha) =>
       glow(sprite, x, y, radius, alpha * roundStrength), roundStrength);
     if (t >= heartFireworksAt) drawFireworks(t, narrow, glow, 1, true);
@@ -1006,7 +1023,7 @@
     ctx.globalCompositeOperation = 'lighter';
     const branchOffsets = treeWeight > 0 ?
       drawInkStrokes(t, size, top, project, split, tiers, treeWeight) : [];
-    for (const {needle, name, heart, message, shimmer, glint} of particles) {
+    for (const {needle, name, heart, message, wish, shimmer, glint} of particles) {
       const [x,y,z,a,b,tier,spray] = needle;
       const start = .28 + spray * .16;
       const growth = tiers[tier];
@@ -1049,9 +1066,12 @@
       }
       const heartX = heart[0] * heartCos - heart[2] * heartSin;
       const heartZ = heart[0] * heartSin + heart[2] * heartCos;
-      let messageX = 0, messageZ = 0, messageRow = 0, messageTaper = 1;
-      if (messageWeight > 0) {
-        const {path, position, spread} = message;
+      let messageX = 0, messageZ = 0, messageRow = 0, messageTaper = 0;
+      for (let kind = 0; kind < 2; kind++) {
+        const weight = kind === 0 ? confessionWeight : wishWeight;
+        if (weight <= 0) continue;
+        const textScale = kind === 0 ? messageScale : Math.min(width * .91, size * 1.28) / size / 735;
+        const {path, position, spread} = kind === 0 ? message : wish;
         const travel = ((position + messageTime * (5.7 + b * 5.1)) % path.length) / path.length;
         const step = travel * (path.line.length - 1);
         const i = Math.min(Math.floor(step), path.line.length - 2);
@@ -1060,17 +1080,17 @@
         const drift = glint && messageTime ? Math.max(0, Math.sin(t * 1.55 + shimmer)) ** 3 : 0;
         const offset = spread * (1.15 + drift * 3.5);
         const length = Math.hypot(x1 - x0, y1 - y0) || 1;
-        const x = (path.offset + mix(x0,x1,step-i) - (y1-y0) / length * offset) * messageScale;
-        const y = (mix(y0,y1,step-i) - 50 + (x1-x0) / length * offset) * messageScale;
+        const x = (path.offset + mix(x0,x1,step-i) - (y1-y0) / length * offset) * textScale;
+        const y = (mix(y0,y1,step-i) - 50 + (x1-x0) / length * offset) * textScale;
         const turnedX = x * Math.cos(messageRoll) - y * Math.sin(messageRoll);
-        messageX = turnedX * Math.cos(messageAngle);
-        messageZ = turnedX * Math.sin(messageAngle);
-        messageRow = messageY + y * Math.cos(messageRoll) + x * Math.sin(messageRoll);
-        messageTaper = .42 + .58 * smooth(Math.min(travel, 1 - travel) / .08);
+        messageX += weight * turnedX * Math.cos(messageAngle);
+        messageZ += weight * turnedX * Math.sin(messageAngle);
+        messageRow += weight * (messageY + y * Math.cos(messageRoll) + x * Math.sin(messageRoll));
+        messageTaper += weight * (.42 + .58 * smooth(Math.min(travel, 1 - travel) / .08));
       }
-      let [px,py,p] = project(x * treeWeight + nameX * nameWeight + heartX * heartWeight + messageX * messageWeight,
-        y * treeWeight + nameYOnStroke * nameWeight + heart[1] * heartWeight + messageRow * messageWeight,
-        z * treeWeight + nameZ * nameWeight + heartZ * heartWeight + messageZ * messageWeight);
+      let [px,py,p] = project(x * treeWeight + nameX * nameWeight + heartX * heartWeight + messageX,
+        y * treeWeight + nameYOnStroke * nameWeight + heart[1] * heartWeight + messageRow,
+        z * treeWeight + nameZ * nameWeight + heartZ * heartWeight + messageZ);
       if (branchOffsets[tier]) {
         const [offsetX, offsetY] = branchOffsets[tier][Math.round(spray * 39)];
         px += offsetX * treeWeight;
@@ -1083,12 +1103,12 @@
         + nameWeight * (a > .95 ? .25 : .03) * 8);
       ctx.fillStyle = messageWeight > .4 ? (glint ? "#ffb9dc" : "#fff1fa") : pink > 0 ? particleTints[pink] : nameWeight > .45 ? "#eaf3ff" : needlesColors[Math.floor(a * 4)];
       ctx.globalAlpha = twinkle * (treeWeight * foliage * (.24 + .65*b)
-        + nameWeight * taper * (.28 + .43*b + .25*lightFlow) + heartWeight * (.40 + .56*b) + messageWeight * messageTaper * (.32 + .51*b))
+        + nameWeight * taper * (.28 + .43*b + .25*lightFlow) + heartWeight * (.40 + .56*b) + messageTaper * (.32 + .51*b))
         * (p > 1 ? 1 : .68);
       ctx.fillRect(px, py, dot * (1 + .4*treeWeight), dot * (.92 - .16*treeWeight));
       if (glint && nameWeight + heartWeight + messageWeight > .15) {
         glow(pink > 2 ? pinkGlow : whiteGlow, px, py, dot * (3.5 + .55 * nameWeight),
-          twinkle * ((.24 + .28 * lightFlow + .18 * drift) * nameWeight * taper + .30 * heartWeight + .26 * messageWeight * messageTaper));
+          twinkle * ((.24 + .28 * lightFlow + .18 * drift) * nameWeight * taper + .30 * heartWeight + .26 * messageTaper));
       }
     }
 
@@ -1287,8 +1307,10 @@
   modeButtons.forEach((button, index) => { button.onclick = () => selectMode(index); });
   updateModeButtons();
   easterEgg.onclick = () => {
+    if (easterEgg.hidden || mode === 4) return;
     ornamentTap = elapsed;
-    paint(elapsed);
+    heartFireworksAt = elapsed + transitionDuration;
+    selectMode(4);
   };
   toggle.onclick = () => setPlaying(!playing);
   replay.onclick = () => {
