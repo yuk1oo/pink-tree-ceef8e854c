@@ -926,11 +926,13 @@
   ].map(row => Array.from({length: 6}, (_, i) => row[i % row.length])
     .map(hex => [0, 2, 4].map(i => parseInt(hex.slice(i, i + 2), 16))));
   const themeGlow = treeThemes.map(row => row.map(rgb => glowSprite(rgb.join(','))));
+  const angelTouchGlow = glowSprite('255,221,143');
   let theme = 0;
   let nextTheme = 0;
   let themeFrom = treeThemes[0];
   let themeAt = -1;
   let colorTap = null;
+  let angelTapAt = -Infinity;
   function themeColors(t) {
     const phase = smooth((t - themeAt) / .64);
     return treeThemes[theme].map((rgb, i) => themeFrom[i].map((from, j) =>
@@ -1003,13 +1005,28 @@
   const angelBeads = angelPattern.flatMap((row, y) => Array.from(row, (cell, x) =>
     [x - 20, y, angelColors[cell]]).filter(bead => bead[2]));
 
-  function drawAngel(t, size, project, strength) {
+  function drawAngel(t, size, project, strength, glow) {
     const visible = strength * (motion.matches ? 1 : smooth((t - firstFireworksEnd) / 1.5));
     angelEgg.hidden = visible < .78;
     if (visible <= 0) return;
     const [x, y] = project(-.225, .39, .12);
     const unit = Math.min(1.27, size * .00305);
-    const sway = motion.matches ? 0 : Math.sin(t * 1.55 + .8) * .085;
+    const age = t - angelTapAt;
+    const pulse = age >= 0 && age < .85 ? (1 - age / .85) ** 2 : 0;
+    const sway = motion.matches ? 0 : Math.sin(t * 1.55 + .8) * .085
+      + Math.sin(age < .85 ? age * 18 : 0) * pulse * .24;
+    if (pulse > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      glow(angelTouchGlow, x, y + 5 * unit, 15 * unit, pulse * visible * .8);
+      for (let i = 0; i < 7; i++) {
+        const angle = i / 7 * tau;
+        const distance = unit * (8 + age * 36);
+        glow(angelTouchGlow, x + Math.cos(angle) * distance,
+          y + 5 * unit + Math.sin(angle) * distance * .64, 4 * unit, pulse * visible);
+      }
+      ctx.restore();
+    }
     angelEgg.style.left = x + 'px';
     angelEgg.style.top = (y + 25 * unit) + 'px';
     ctx.save();
@@ -1334,7 +1351,7 @@
 
     drawCompanions(t, narrow, size, top, orbit, backgroundWeight);
     drawEasterEggs(t, narrow, size, top, project, treeWeight, glow);
-    drawAngel(t, size, project, treeWeight);
+    drawAngel(t, size, project, treeWeight, glow);
     const birthdayReveal = motion.matches && t >= morphEnd ? 1 :
       smooth((t - firstFireworksEnd - 1.1) / .63);
     drawBirthday(t, size, rotation, project, treeWeight * birthdayReveal, glow);
@@ -1438,6 +1455,8 @@
   };
   angelEgg.onclick = () => {
     if (angelEgg.hidden || mode !== 0) return;
+    angelTapAt = elapsed;
+    paint(elapsed);
     if (colorTap !== null) {
       cancelColorTap();
       selectTheme(6);
@@ -1458,6 +1477,7 @@
     theme = nextTheme = 0;
     themeFrom = treeThemes[0];
     themeAt = -1;
+    angelTapAt = -Infinity;
     resetCrownTaps();
     messageShown = false;
     heartFireworksAt = Infinity;
